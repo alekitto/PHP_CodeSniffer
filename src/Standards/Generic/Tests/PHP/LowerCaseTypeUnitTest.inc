@@ -68,6 +68,9 @@ class TypedProperties
     public Object $object;
     protected Mixed $mixed;
 
+    #[WithAttribute('bar_x')]
+    protected BOOL $boolWithAttr;
+
     public Iterable|FALSE|NULL $unionTypeA;
     protected SELF|Parent /* comment */ |\Fully\Qualified\ClassName|UnQualifiedClass $unionTypeB;
     private ClassName|/*comment*/Float|STRING|False $unionTypeC;

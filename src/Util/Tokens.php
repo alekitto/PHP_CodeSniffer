@@ -143,6 +143,12 @@ if (defined('T_NAME_RELATIVE') === false) {
     define('T_NAME_RELATIVE', 'PHPCS_T_NAME_RELATIVE');
 }
 
+if (defined('T_ATTRIBUTE') === false) {
+    define('T_ATTRIBUTE', 'PHPCS_T_ATTRIBUTE');
+}
+
+define('T_ATTRIBUTE_END', 'PHPCS_T_ATTRIBUTE_END');
+
 // Tokens used for parsing doc blocks.
 define('T_DOC_COMMENT_STAR', 'PHPCS_T_DOC_COMMENT_STAR');
 define('T_DOC_COMMENT_WHITESPACE', 'PHPCS_T_DOC_COMMENT_WHITESPACE');

@@ -115,9 +115,29 @@ class FunctionSpacingSniff implements Sniff
         $ignore = ([T_WHITESPACE => T_WHITESPACE] + Tokens::$methodPrefixes);
 
         $prev = $phpcsFile->findPrevious($ignore, ($stackPtr - 1), null, true);
+        while (true) {
+            if ($tokens[$prev]['code'] === T_ATTRIBUTE_END) {
+                // Skip past function attributes.
+                $prev = $phpcsFile->findPrevious($ignore, ($tokens[$prev]['attribute_opener'] - 1), null, true);
+                continue;
+            }
+
+            break;
+        }
+
         if ($tokens[$prev]['code'] === T_DOC_COMMENT_CLOSE_TAG) {
             // Skip past function docblocks.
             $prev = $phpcsFile->findPrevious($ignore, ($tokens[$prev]['comment_opener'] - 1), null, true);
+        }
+
+        while (true) {
+            if ($tokens[$prev]['code'] === T_ATTRIBUTE_END) {
+                // Skip past function attributes.
+                $prev = $phpcsFile->findPrevious($ignore, ($tokens[$prev]['attribute_opener'] - 1), null, true);
+                continue;
+            }
+
+            break;
         }
 
         if ($tokens[$prev]['code'] === T_OPEN_CURLY_BRACKET) {
@@ -229,8 +249,7 @@ class FunctionSpacingSniff implements Sniff
             $prevContent   = 0;
             $prevLineToken = 0;
         } else {
-            $currentLine = $tokens[$stackPtr]['line'];
-
+            $prevLine    = $currentLine = $tokens[$stackPtr]['line'];
             $prevContent = $phpcsFile->findPrevious(T_WHITESPACE, $prevLineToken, null, true);
 
             if ($tokens[$prevContent]['code'] === T_COMMENT
@@ -241,11 +260,37 @@ class FunctionSpacingSniff implements Sniff
                 return;
             }
 
+            while (true) {
+                if ($tokens[$prevContent]['code'] === T_ATTRIBUTE_END
+                    && $tokens[$prevContent]['line'] === ($prevLine - 1)
+                ) {
+                    // Account for function comments.
+                    $prevLine    = $tokens[$prevContent]['line'];
+                    $prevContent = $phpcsFile->findPrevious(T_WHITESPACE, ($tokens[$prevContent]['attribute_opener'] - 1), null, true);
+                    continue;
+                }
+
+                break;
+            }
+
             if ($tokens[$prevContent]['code'] === T_DOC_COMMENT_CLOSE_TAG
-                && $tokens[$prevContent]['line'] === ($currentLine - 1)
+                && $tokens[$prevContent]['line'] === ($prevLine - 1)
             ) {
                 // Account for function comments.
                 $prevContent = $phpcsFile->findPrevious(T_WHITESPACE, ($tokens[$prevContent]['comment_opener'] - 1), null, true);
+            }
+
+            while (true) {
+                if ($tokens[$prevContent]['code'] === T_ATTRIBUTE_END
+                    && $tokens[$prevContent]['line'] === ($prevLine - 1)
+                ) {
+                    // Account for function comments.
+                    $prevLine    = $tokens[$prevContent]['line'];
+                    $prevContent = $phpcsFile->findPrevious(T_WHITESPACE, ($tokens[$prevContent]['attribute_opener'] - 1), null, true);
+                    continue;
+                }
+
+                break;
             }
 
             $prevLineToken = $prevContent;

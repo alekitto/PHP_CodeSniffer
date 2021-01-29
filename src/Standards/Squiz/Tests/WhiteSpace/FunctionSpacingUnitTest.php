@@ -104,6 +104,9 @@ class FunctionSpacingUnitTest extends AbstractSniffUnitTest
         case 'FunctionSpacingUnitTest.6.inc':
             return [10 => 1];
 
+        case 'FunctionSpacingUnitTest.8.inc':
+            return [11 => 1];
+
         default:
             return [];
         }//end switch

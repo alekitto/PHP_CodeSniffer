@@ -894,6 +894,66 @@ class PHP extends Tokenizer
             }//end if
 
             /*
+                PHP 8.0 Attributes
+            */
+
+            if (PHP_VERSION_ID < 80000
+                && $token[0] === T_COMMENT
+                && strpos($token[1], '#[') === 0
+                && (strlen($token[1]) - 2) === strrpos($token[1], ']')
+            ) {
+                $subTokens = @token_get_all('<?php '.substr($token[1], 2, -2));
+                array_splice($subTokens, 0, 1, [[T_ATTRIBUTE, '#[']]);
+                $subTokens[] = ']';
+                $subTokens[] = [
+                    T_WHITESPACE,
+                    substr($token[1], -1),
+                ];
+
+                $numTokens += (count($subTokens) - 1);
+                array_splice($tokens, $stackPtr, 1, $subTokens);
+
+                $tokenIsArray = true;
+                $token        = $tokens[$stackPtr];
+            }
+
+            if ($tokenIsArray === true
+                && $token[0] === T_ATTRIBUTE
+            ) {
+                // Go looking for the close bracket.
+                $bracketStack  = [$stackPtr];
+                $bracketCloser = null;
+                for ($x = ($stackPtr + 1); $x < $numTokens; $x++) {
+                    if ($tokens[$x] === '[') {
+                        $bracketStack[] = $x;
+                    } else if ($tokens[$x] === ']') {
+                        array_pop($bracketStack);
+                        if (empty($bracketStack) === true) {
+                            $bracketCloser = $x;
+                            break;
+                        }
+                    }
+                }
+
+                $newToken            = [];
+                $newToken['code']    = T_ATTRIBUTE;
+                $newToken['type']    = 'T_ATTRIBUTE';
+                $newToken['content'] = '#[';
+                $finalTokens[$newStackPtr] = $newToken;
+
+                $tokens[$bracketCloser]    = [];
+                $tokens[$bracketCloser][0] = T_ATTRIBUTE_END;
+                $tokens[$bracketCloser][1] = ']';
+
+                if (PHP_CODESNIFFER_VERBOSITY > 1) {
+                    echo "\t\t* token $bracketCloser changed from T_CLOSE_SQUARE_BRACKET to T_ATTRIBUTE_END".PHP_EOL;
+                }
+
+                $newStackPtr++;
+                continue;
+            }//end if
+
+            /*
                 Tokenize the parameter labels for PHP 8.0 named parameters as a special T_PARAM_NAME
                 token and ensure that the colon after it is always T_COLON.
             */
@@ -1488,22 +1548,22 @@ class PHP extends Tokenizer
 
                 // Go looking for the colon to start the return type hint.
                 // Start by finding the closing parenthesis of the function.
-                $parenthesisStack  = [];
-                $parenthesisCloser = false;
+                $bracketStack  = [];
+                $bracketCloser = false;
                 for ($x = ($stackPtr + 1); $x < $numTokens; $x++) {
                     if (is_array($tokens[$x]) === false && $tokens[$x] === '(') {
-                        $parenthesisStack[] = $x;
+                        $bracketStack[] = $x;
                     } else if (is_array($tokens[$x]) === false && $tokens[$x] === ')') {
-                        array_pop($parenthesisStack);
-                        if (empty($parenthesisStack) === true) {
-                            $parenthesisCloser = $x;
+                        array_pop($bracketStack);
+                        if (empty($bracketStack) === true) {
+                            $bracketCloser = $x;
                             break;
                         }
                     }
                 }
 
-                if ($parenthesisCloser !== false) {
-                    for ($x = ($parenthesisCloser + 1); $x < $numTokens; $x++) {
+                if ($bracketCloser !== false) {
+                    for ($x = ($bracketCloser + 1); $x < $numTokens; $x++) {
                         if (is_array($tokens[$x]) === false
                             || isset(Util\Tokens::$emptyTokens[$tokens[$x][0]]) === false
                         ) {
@@ -1700,6 +1760,7 @@ class PHP extends Tokenizer
                         T_CLASS                    => true,
                         T_EXTENDS                  => true,
                         T_IMPLEMENTS               => true,
+                        T_ATTRIBUTE                => true,
                         T_NEW                      => true,
                         T_CONST                    => true,
                         T_NS_SEPARATOR             => true,
@@ -2500,6 +2561,17 @@ class PHP extends Tokenizer
                     $this->tokens[$x]['code'] = T_STRING;
                     $this->tokens[$x]['type'] = 'T_STRING';
                 }
+            } else if ($this->tokens[$i]['code'] === T_ATTRIBUTE) {
+                for ($x = ($i + 1); $x < $numTokens; $x++) {
+                    if ($this->tokens[$x]['code'] === T_ATTRIBUTE_END) {
+                        break;
+                    }
+                }
+
+                $this->tokens[$i]['attribute_opener'] = $i;
+                $this->tokens[$i]['attribute_closer'] = $x;
+                $this->tokens[$x]['attribute_opener'] = $i;
+                $this->tokens[$x]['attribute_closer'] = $x;
             }//end if
 
             if (($this->tokens[$i]['code'] !== T_CASE
