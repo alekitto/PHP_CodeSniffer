@@ -900,21 +900,15 @@ class PHP extends Tokenizer
             if (PHP_VERSION_ID < 80000
                 && $token[0] === T_COMMENT
                 && strpos($token[1], '#[') === 0
-                && (strlen($token[1]) - 2) === strrpos($token[1], ']')
             ) {
-                $subTokens = @token_get_all('<?php '.substr($token[1], 2, -2));
-                array_splice($subTokens, 0, 1, [[T_ATTRIBUTE, '#[']]);
-                $subTokens[] = ']';
-                $subTokens[] = [
-                    T_WHITESPACE,
-                    substr($token[1], -1),
-                ];
+                $subTokens = $this->parsePhpAttribute($tokens, $stackPtr);
+                if ($subTokens !== null) {
+                    array_splice($tokens, $stackPtr, 1, $subTokens);
+                    $numTokens = count($tokens);
 
-                $numTokens += (count($subTokens) - 1);
-                array_splice($tokens, $stackPtr, 1, $subTokens);
-
-                $tokenIsArray = true;
-                $token        = $tokens[$stackPtr];
+                    $tokenIsArray = true;
+                    $token        = $tokens[$stackPtr];
+                }
             }
 
             if ($tokenIsArray === true
@@ -2907,6 +2901,60 @@ class PHP extends Tokenizer
         return $newToken;
 
     }//end resolveSimpleToken()
+
+
+    /**
+     * PHP 8 attributes parser for PHP < 8
+     * Handles single-line and multiline attributes.
+     *
+     * @param array $tokens   The original array of tokens (as returned by token_get_all)
+     * @param int   $stackPtr The current position in token array
+     *
+     * @return array|null The array of parsed attribute tokens
+     */
+    private function parsePhpAttribute(array &$tokens, $stackPtr)
+    {
+
+        $token = $tokens[$stackPtr];
+
+        $commentBody = substr($token[1], 2);
+        $subTokens   = @token_get_all('<?php '.$commentBody);
+        array_splice($subTokens, 0, 1, [[T_ATTRIBUTE, '#[']]);
+
+        // Go looking for the close bracket.
+        $findCloser = static function (array $tokens, $start=1) {
+            $numTokens     = count($tokens);
+            $bracketStack  = [0];
+            $bracketCloser = null;
+            for ($x = $start; $x < $numTokens; $x++) {
+                if ($tokens[$x] === '[') {
+                    $bracketStack[] = $x;
+                } else if ($tokens[$x] === ']') {
+                    array_pop($bracketStack);
+                    if (empty($bracketStack) === true) {
+                        $bracketCloser = $x;
+                        break;
+                    }
+                }
+            }
+
+            return $bracketCloser;
+        };
+
+        $bracketCloser = $findCloser($subTokens);
+        if ($bracketCloser === null) {
+            $bracketCloser = $findCloser($tokens, $stackPtr);
+            if ($bracketCloser === null) {
+                return null;
+            }
+
+            array_splice($subTokens, count($subTokens), 0, array_slice($tokens, ($stackPtr + 1), ($bracketCloser - $stackPtr)));
+            array_splice($tokens, ($stackPtr + 1), ($bracketCloser - $stackPtr));
+        }
+
+        return $subTokens;
+
+    }//end parsePhpAttribute()
 
 
 }//end class
