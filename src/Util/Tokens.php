@@ -77,6 +77,7 @@ define('T_ZSR_EQUAL', 'PHPCS_T_ZSR_EQUAL');
 define('T_FN_ARROW', 'T_FN_ARROW');
 define('T_TYPE_UNION', 'T_TYPE_UNION');
 define('T_PARAM_NAME', 'T_PARAM_NAME');
+define('T_ATTRIBUTE_END', 'PHPCS_T_ATTRIBUTE_END');
 
 // Some PHP 5.5 tokens, replicated for lower versions.
 if (defined('T_FINALLY') === false) {
@@ -141,6 +142,10 @@ if (defined('T_NAME_FULLY_QUALIFIED') === false) {
 
 if (defined('T_NAME_RELATIVE') === false) {
     define('T_NAME_RELATIVE', 'PHPCS_T_NAME_RELATIVE');
+}
+
+if (defined('T_ATTRIBUTE') === false) {
+    define('T_ATTRIBUTE', 'PHPCS_T_ATTRIBUTE');
 }
 
 // Tokens used for parsing doc blocks.
